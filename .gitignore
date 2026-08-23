@@ -1,20 +1,26 @@
-# Binaries and build outputs
+# Build outputs and directories
 /bin/
 /dist/
-*.exe
-*.exe~
-*.dll
+/build/
 *.so
-*.dylib
+*.a
+*.o
 
-# Test artifacts and coverage
+# Test packages and temporary test fixtures
+*.deb
+*.rpm
+*.AppImage
+*.flatpak
+*.flatpakref
+
+# Test and coverage artifacts
 *.out
 *.test
 /coverage/
 
-# OS and IDE files
-.DS_Store
-.idea/
-.vscode/
-*.swp
+# Linux editor and temporary files
 *~
+*.swp
+*.swo
+.vscode/
+.idea/
