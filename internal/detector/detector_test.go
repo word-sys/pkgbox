@@ -76,11 +76,19 @@ func TestInspectFile_RPM(t *testing.T) {
 	}
 }
 
-func TestInspectFile_FlatpakRef(t *testing.T) {
+func TestInspectFile_FlathubRef(t *testing.T) {
 	tempDir := t.TempDir()
-	path := filepath.Join(tempDir, "app.flatpakref")
+	path := filepath.Join(tempDir, "org.mozilla.firefox.flatpakref")
 
-	content := "[Flatpak Ref]\nName=org.gnome.Calculator\nUrl=https://flathub.org\n"
+	content := `[Flatpak Ref]
+Name=org.mozilla.firefox
+Branch=stable
+Title=Firefox
+Url=https://dl.flathub.org/repo/
+SuggestRemoteName=flathub
+RuntimeRepo=https://flathub.org/repo/flathub.flatpakrepo
+IsRuntime=false
+`
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		t.Fatalf("failed to write test file: %v", err)
 	}
@@ -92,6 +100,18 @@ func TestInspectFile_FlatpakRef(t *testing.T) {
 
 	if info.Type != TypeFlatpakRef {
 		t.Errorf("expected TypeFlatpakRef, got %v", info.Type)
+	}
+	if info.AppID != "org.mozilla.firefox" {
+		t.Errorf("expected AppID org.mozilla.firefox, got %v", info.AppID)
+	}
+	if info.AppName != "Firefox" {
+		t.Errorf("expected AppName Firefox, got %v", info.AppName)
+	}
+	if info.Arch != "Flatpak (stable)" {
+		t.Errorf("expected Flatpak (stable), got %v", info.Arch)
+	}
+	if info.Extra["RuntimeRepo"] != "https://flathub.org/repo/flathub.flatpakrepo" {
+		t.Errorf("missing RuntimeRepo in Extra map")
 	}
 }
 

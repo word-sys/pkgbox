@@ -1,6 +1,7 @@
 package detector
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -41,15 +42,65 @@ func InspectFile(filePath string) (*FileInfo, error) {
 	pkgType, arch := detectTypeAndArch(filePath, header)
 	isExec := (fileInfo.Mode().Perm() & 0111) != 0
 
-	return &FileInfo{
+	info := &FileInfo{
 		Path:          filePath,
 		FileName:      filepath.Base(filePath),
+		AppName:       cleanBaseName(filepath.Base(filePath)),
 		Size:          fileInfo.Size(),
 		FormattedSize: formatSize(fileInfo.Size()),
 		Type:          pkgType,
 		Arch:          arch,
 		IsExecutable:  isExec,
-	}, nil
+		Extra:         make(map[string]string),
+	}
+
+	if pkgType == TypeFlatpakRef || pkgType == TypeFlatpakRepo {
+		parseFlatpakRefFile(filePath, info)
+	}
+
+	return info, nil
+}
+
+func parseFlatpakRefFile(filePath string, info *FileInfo) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "[") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			k := strings.TrimSpace(parts[0])
+			v := strings.TrimSpace(parts[1])
+			info.Extra[k] = v
+		}
+	}
+
+	if appID, ok := info.Extra["Name"]; ok && appID != "" {
+		info.AppID = appID
+		if title, ok := info.Extra["Title"]; ok && title != "" {
+			info.AppName = title
+		} else {
+			info.AppName = appID
+		}
+	}
+	if branch, ok := info.Extra["Branch"]; ok && branch != "" {
+		info.Arch = fmt.Sprintf("Flatpak (%s)", branch)
+	}
+}
+
+func cleanBaseName(fileName string) string {
+	ext := filepath.Ext(fileName)
+	name := strings.TrimSuffix(fileName, ext)
+	name = strings.ReplaceAll(name, "-", " ")
+	name = strings.ReplaceAll(name, "_", " ")
+	return strings.Title(strings.ToLower(name))
 }
 
 func detectTypeAndArch(path string, header []byte) (PackageType, string) {
@@ -64,11 +115,15 @@ func detectTypeAndArch(path string, header []byte) (PackageType, string) {
 	}
 
 	if ext == ".flatpakref" || (len(header) > 13 && strings.Contains(string(header), "[Flatpak Ref]")) {
-		return TypeFlatpakRef, "All"
+		return TypeFlatpakRef, "Flathub / Flatpak"
+	}
+
+	if ext == ".flatpakrepo" || (len(header) > 14 && strings.Contains(string(header), "[Flatpak Repo]")) {
+		return TypeFlatpakRepo, "Repository"
 	}
 
 	if ext == ".flatpak" {
-		return TypeFlatpak, "Flatpak Architecture"
+		return TypeFlatpak, "Flatpak Bundle"
 	}
 
 	if len(header) >= 4 && bytes.Equal(header[:4], elfMagic) {
