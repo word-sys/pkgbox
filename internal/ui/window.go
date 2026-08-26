@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/gotk3/gotk3/gtk"
+
+	"pkgbox/internal/detector"
 )
 
 type AppWindow struct {
@@ -69,7 +71,14 @@ func NewAppWindow() (*AppWindow, error) {
 }
 
 func (w *AppWindow) onFileDropped(filePath string) {
-	w.InfoLabel.SetText(fmt.Sprintf("Selected: %s", filePath))
+	info, err := detector.InspectFile(filePath)
+	if err != nil {
+		w.InfoLabel.SetText(fmt.Sprintf("Error inspecting file: %v", err))
+		return
+	}
+
+	w.InfoLabel.SetText(fmt.Sprintf("Detected: %s | Type: %s | Arch: %s | Size: %s",
+		info.FileName, info.Type, info.Arch, info.FormattedSize))
 }
 
 func (w *AppWindow) Show() {
