@@ -6,8 +6,8 @@ PkgBox is a universal Linux application installer and manager. It provides a dra
 - AppImage (.AppImage)
 - Debian Packages (.deb)
 - RPM Packages (.rpm)
-- Flatpak (.flatpak, .flatpakref)
-- Standalone binaries and scripts (will be developed in future)
+- Flatpak (.flatpak, .flatpakref, .flatpakrepo)
+- Standalone binaries and scripts
 
 ## Requirements
 - Go 1.18 or newer
