@@ -6,15 +6,17 @@ import (
 	"github.com/gotk3/gotk3/gtk"
 
 	"pkgbox/internal/detector"
+	"pkgbox/internal/installer"
 )
 
 type AppWindow struct {
-	Window    *gtk.Window
-	RootBox   *gtk.Box
-	Stack     *gtk.Stack
-	DropZone  *DropZone
-	InfoCard  *InfoCard
-	InfoLabel *gtk.Label
+	Window       *gtk.Window
+	RootBox      *gtk.Box
+	Stack        *gtk.Stack
+	DropZone     *DropZone
+	InfoCard     *InfoCard
+	ProgressView *ProgressView
+	InfoLabel    *gtk.Label
 }
 
 func NewAppWindow() (*AppWindow, error) {
@@ -89,8 +91,17 @@ func NewAppWindow() (*AppWindow, error) {
 	}
 	appWin.InfoCard = infoCard
 
+	progressView, err := NewProgressView(func() {
+		appWin.onDoneRequested()
+	})
+	if err != nil {
+		return nil, err
+	}
+	appWin.ProgressView = progressView
+
 	stack.AddNamed(dz.Widget, "drop")
 	stack.AddNamed(infoCard.Widget, "info")
+	stack.AddNamed(progressView.Widget, "progress")
 
 	box.PackStart(stack, true, true, 8)
 	box.PackStart(infoLabel, false, false, 4)
@@ -116,8 +127,26 @@ func (w *AppWindow) onCancelRequested() {
 	w.InfoLabel.SetText("Ready. Drop a package file above.")
 }
 
+func (w *AppWindow) onDoneRequested() {
+	w.Stack.SetVisibleChildName("drop")
+	w.InfoLabel.SetText("Ready. Drop a package file above.")
+}
+
 func (w *AppWindow) onInstallRequested(info *detector.FileInfo) {
-	w.InfoLabel.SetText(fmt.Sprintf("Ready to install %s (%s)", info.AppName, info.Type))
+	w.ProgressView.Reset(info.AppName)
+	w.Stack.SetVisibleChildName("progress")
+	w.InfoLabel.SetText(fmt.Sprintf("Installing %s...", info.AppName))
+
+	go func() {
+		result, err := installer.InstallUserSpaceApp(info, func(stage string, fraction float64) {
+			w.ProgressView.UpdateProgress(stage, fraction)
+		})
+		if err != nil {
+			w.ProgressView.ShowError(err)
+			return
+		}
+		w.ProgressView.ShowSuccess(result)
+	}()
 }
 
 func (w *AppWindow) onPermissionsRequested(info *detector.FileInfo) {
