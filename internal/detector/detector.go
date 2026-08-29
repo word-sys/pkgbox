@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"pkgbox/internal/hasher"
 )
 
 var (
@@ -42,12 +44,15 @@ func InspectFile(filePath string) (*FileInfo, error) {
 	pkgType, arch := detectTypeAndArch(filePath, header)
 	isExec := (fileInfo.Mode().Perm() & 0111) != 0
 
+	shaHash, _ := hasher.CalculateSHA256(filePath)
+
 	info := &FileInfo{
 		Path:          filePath,
 		FileName:      filepath.Base(filePath),
 		AppName:       cleanBaseName(filepath.Base(filePath)),
 		Size:          fileInfo.Size(),
 		FormattedSize: formatSize(fileInfo.Size()),
+		SHA256:        shaHash,
 		Type:          pkgType,
 		Arch:          arch,
 		IsExecutable:  isExec,

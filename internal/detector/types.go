@@ -21,6 +21,7 @@ type FileInfo struct {
 	AppID         string
 	Size          int64
 	FormattedSize string
+	SHA256        string
 	Type          PackageType
 	Arch          string
 	IsExecutable  bool

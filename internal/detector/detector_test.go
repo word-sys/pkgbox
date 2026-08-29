@@ -36,6 +36,9 @@ func TestInspectFile_AppImage(t *testing.T) {
 	if !info.IsExecutable {
 		t.Errorf("expected IsExecutable to be true")
 	}
+	if len(info.SHA256) != 64 {
+		t.Errorf("expected 64-char SHA256 string, got %q", info.SHA256)
+	}
 }
 
 func TestInspectFile_Deb(t *testing.T) {
