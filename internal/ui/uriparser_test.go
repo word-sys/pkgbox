@@ -45,6 +45,27 @@ func TestParseURIList_MultipleFiles(t *testing.T) {
 	}
 }
 
+func TestParseDropData_RemoteURL(t *testing.T) {
+	raw := "https://flathub.org/apps/org.mozilla.firefox\r\n"
+	items, err := ParseDropData(raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(items))
+	}
+
+	if items[0].Kind != DropKindURL {
+		t.Errorf("expected DropKindURL, got %v", items[0].Kind)
+	}
+
+	expectedNormalized := "https://dl.flathub.org/repo/appstream/org.mozilla.firefox.flatpakref"
+	if items[0].Value != expectedNormalized {
+		t.Errorf("expected %q, got %q", expectedNormalized, items[0].Value)
+	}
+}
+
 func TestParseURIList_NonExistentFile(t *testing.T) {
 	raw := "file:///tmp/this_file_does_not_exist_12345.AppImage\r\n"
 	_, err := ParseURIList(raw)
