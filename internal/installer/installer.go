@@ -10,6 +10,7 @@ import (
 
 	"pkgbox/internal/desktop"
 	"pkgbox/internal/detector"
+	"pkgbox/internal/extractor/appimage"
 )
 
 type ProgressCallback func(stage string, fraction float64)
@@ -83,13 +84,37 @@ func InstallUserSpaceApp(info *detector.FileInfo, progress ProgressCallback) (*I
 		progress("Registering desktop launcher...", 0.8)
 	}
 
+	appName := info.AppName
+	comment := fmt.Sprintf("Installed via PkgBox (%s)", info.Type)
+	var categories []string
+	var iconPath string
+
+	if info.Type == detector.TypeAppImage {
+		if meta, err := appimage.ExtractAppImageMetadata(destBinary, appID); err == nil && meta != nil {
+			if meta.Name != "" {
+				appName = meta.Name
+			}
+			if meta.Comment != "" {
+				comment = meta.Comment
+			}
+			if len(meta.Categories) > 0 {
+				categories = meta.Categories
+			}
+			if meta.IconPath != "" {
+				iconPath = meta.IconPath
+			}
+		}
+	}
+
 	cfg := desktop.EntryConfig{
-		AppID:    appID,
-		Name:     info.AppName,
-		Comment:  fmt.Sprintf("Installed via PkgBox (%s)", info.Type),
-		ExecPath: destBinary,
-		ExecArgs: "%U",
-		Terminal: false,
+		AppID:      appID,
+		Name:       appName,
+		Comment:    comment,
+		ExecPath:   destBinary,
+		ExecArgs:   "%U",
+		IconPath:   iconPath,
+		Categories: categories,
+		Terminal:   false,
 	}
 
 	desktopPath, err := desktop.InstallDesktopEntry(cfg)
