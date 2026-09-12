@@ -143,6 +143,17 @@ func detectTypeAndArch(path string, header []byte) (PackageType, string) {
 		return TypeScript, "Script"
 	}
 
+	// Archive detection
+	if (len(header) >= 4 && bytes.Equal(header[:4], []byte{0x50, 0x4b, 0x03, 0x04})) || ext == ".zip" {
+		return TypeArchive, "ZIP Archive"
+	}
+	if (len(header) >= 2 && bytes.Equal(header[:2], []byte{0x1f, 0x8b})) || ext == ".tar.gz" || ext == ".tgz" {
+		return TypeArchive, "Tarball (Gzip)"
+	}
+	if (len(header) >= 6 && bytes.Equal(header[:6], []byte{0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00})) || ext == ".tar.xz" {
+		return TypeArchive, "Tarball (XZ)"
+	}
+
 	switch ext {
 	case ".deb":
 		return TypeDeb, "Debian Architecture"
@@ -150,6 +161,8 @@ func detectTypeAndArch(path string, header []byte) (PackageType, string) {
 		return TypeRPM, "RPM Architecture"
 	case ".appimage":
 		return TypeAppImage, "x86_64 / Any"
+	case ".tar", ".tgz", ".tar.gz", ".tar.xz", ".zip":
+		return TypeArchive, "Archive"
 	default:
 		return TypeUnknown, "Unknown"
 	}

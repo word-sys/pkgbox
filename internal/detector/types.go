@@ -9,6 +9,7 @@ const (
 	TypeFlatpak    PackageType = "Flatpak Bundle (.flatpak)"
 	TypeFlatpakRef PackageType = "Flatpak Reference (.flatpakref)"
 	TypeFlatpakRepo PackageType = "Flatpak Repository (.flatpakrepo)"
+	TypeArchive    PackageType = "Compressed Archive (.tar / .zip)"
 	TypeBinary     PackageType = "Executable Binary (ELF)"
 	TypeScript     PackageType = "Shell Script"
 	TypeUnknown    PackageType = "Unknown / Unsupported"

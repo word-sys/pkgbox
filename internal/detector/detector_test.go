@@ -137,6 +137,25 @@ func TestInspectFile_Script(t *testing.T) {
 	}
 }
 
+func TestInspectFile_ArchiveZip(t *testing.T) {
+	tempDir := t.TempDir()
+	path := filepath.Join(tempDir, "app.zip")
+
+	header := []byte{0x50, 0x4b, 0x03, 0x04, 0x00, 0x00}
+	if err := os.WriteFile(path, header, 0644); err != nil {
+		t.Fatalf("failed to write test file: %v", err)
+	}
+
+	info, err := InspectFile(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if info.Type != TypeArchive {
+		t.Errorf("expected TypeArchive, got %v", info.Type)
+	}
+}
+
 func TestInspectFile_DirectoryError(t *testing.T) {
 	tempDir := t.TempDir()
 	_, err := InspectFile(tempDir)
