@@ -8,13 +8,13 @@ import (
 )
 
 type DropZone struct {
-	Widget         *gtk.EventBox
-	StatusLabel    *gtk.Label
-	SubLabel       *gtk.Label
-	OnFileSelected func(filePath string)
+	Widget             *gtk.EventBox
+	StatusLabel        *gtk.Label
+	SubLabel           *gtk.Label
+	OnItemDropped      func(item DropItem)
 }
 
-func NewDropZone(onFileSelected func(filePath string)) (*DropZone, error) {
+func NewDropZone(onItemDropped func(item DropItem)) (*DropZone, error) {
 	eventBox, err := gtk.EventBoxNew()
 	if err != nil {
 		return nil, err
@@ -35,12 +35,12 @@ func NewDropZone(onFileSelected func(filePath string)) (*DropZone, error) {
 	box.SetMarginTop(40)
 	box.SetMarginBottom(40)
 
-	statusLabel, err := gtk.LabelNew("Drag and drop package here")
+	statusLabel, err := gtk.LabelNew("Drag and drop package or link here")
 	if err != nil {
 		return nil, err
 	}
 
-	subLabel, err := gtk.LabelNew("Supports .AppImage, .deb, .rpm, .flatpak, and binaries")
+	subLabel, err := gtk.LabelNew("Supports .AppImage, .deb, .rpm, .flatpak, binaries, and web URLs")
 	if err != nil {
 		return nil, err
 	}
@@ -59,10 +59,10 @@ func NewDropZone(onFileSelected func(filePath string)) (*DropZone, error) {
 	eventBox.Add(frame)
 
 	dz := &DropZone{
-		Widget:         eventBox,
-		StatusLabel:    statusLabel,
-		SubLabel:       subLabel,
-		OnFileSelected: onFileSelected,
+		Widget:        eventBox,
+		StatusLabel:   statusLabel,
+		SubLabel:      subLabel,
+		OnItemDropped: onItemDropped,
 	}
 
 	targetEntry, err := gtk.TargetEntryNew("text/uri-list", gtk.TARGET_OTHER_APP, 0)
@@ -82,20 +82,20 @@ func NewDropZone(onFileSelected func(filePath string)) (*DropZone, error) {
 	})
 
 	eventBox.Connect("drag-leave", func(w *gtk.EventBox, ctx *gdk.DragContext, time uint) {
-		dz.StatusLabel.SetText("Drag and drop package here")
+		dz.StatusLabel.SetText("Drag and drop package or link here")
 	})
 
 	eventBox.Connect("drag-data-received", func(w *gtk.EventBox, ctx *gdk.DragContext, x, y int, data *gtk.SelectionData, info, time uint) {
-		dz.StatusLabel.SetText("Drag and drop package here")
+		dz.StatusLabel.SetText("Drag and drop package or link here")
 		raw := string(data.GetData())
-		paths, err := ParseURIList(raw)
-		if err != nil || len(paths) == 0 {
+		items, err := ParseDropData(raw)
+		if err != nil || len(items) == 0 {
 			log.Printf("invalid drop: %v", err)
 			return
 		}
 
-		if dz.OnFileSelected != nil {
-			dz.OnFileSelected(paths[0])
+		if dz.OnItemDropped != nil {
+			dz.OnItemDropped(items[0])
 		}
 	})
 
@@ -122,8 +122,11 @@ func NewDropZone(onFileSelected func(filePath string)) (*DropZone, error) {
 
 		if dlg.Run() == gtk.RESPONSE_ACCEPT {
 			filename := dlg.GetFilename()
-			if filename != "" && dz.OnFileSelected != nil {
-				dz.OnFileSelected(filename)
+			if filename != "" && dz.OnItemDropped != nil {
+				dz.OnItemDropped(DropItem{
+					Kind:  DropKindFile,
+					Value: filename,
+				})
 			}
 		}
 	})
