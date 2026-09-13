@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"pkgbox/internal/extractor/deb"
 	"pkgbox/internal/hasher"
 )
 
@@ -61,6 +62,24 @@ func InspectFile(filePath string) (*FileInfo, error) {
 
 	if pkgType == TypeFlatpakRef || pkgType == TypeFlatpakRepo {
 		parseFlatpakRefFile(filePath, info)
+	} else if pkgType == TypeDeb {
+		if debMeta, err := deb.InspectDeb(filePath); err == nil && debMeta != nil {
+			if debMeta.Package != "" {
+				info.AppName = debMeta.Package
+			}
+			if debMeta.Architecture != "" {
+				info.Arch = debMeta.Architecture
+			}
+			if debMeta.Version != "" {
+				info.Extra["Version"] = debMeta.Version
+			}
+			if debMeta.Maintainer != "" {
+				info.Extra["Maintainer"] = debMeta.Maintainer
+			}
+			if debMeta.Description != "" {
+				info.Extra["Description"] = debMeta.Description
+			}
+		}
 	}
 
 	return info, nil
