@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"pkgbox/internal/extractor/deb"
+	"pkgbox/internal/extractor/rpm"
 	"pkgbox/internal/hasher"
 )
 
@@ -78,6 +79,27 @@ func InspectFile(filePath string) (*FileInfo, error) {
 			}
 			if debMeta.Description != "" {
 				info.Extra["Description"] = debMeta.Description
+			}
+		}
+	} else if pkgType == TypeRPM {
+		if rpmMeta, err := rpm.InspectRPM(filePath); err == nil && rpmMeta != nil {
+			if rpmMeta.Name != "" {
+				info.AppName = rpmMeta.Name
+			}
+			if rpmMeta.Architecture != "" {
+				info.Arch = rpmMeta.Architecture
+			}
+			if rpmMeta.Version != "" {
+				info.Extra["Version"] = rpmMeta.Version
+			}
+			if rpmMeta.Release != "" {
+				info.Extra["Release"] = rpmMeta.Release
+			}
+			if rpmMeta.Summary != "" {
+				info.Extra["Summary"] = rpmMeta.Summary
+			}
+			if rpmMeta.License != "" {
+				info.Extra["License"] = rpmMeta.License
 			}
 		}
 	}
