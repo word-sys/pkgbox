@@ -2,6 +2,7 @@ package installer
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -66,5 +67,49 @@ func TestInstallUserSpaceApp_NilInfo(t *testing.T) {
 	_, err := InstallUserSpaceApp(nil, nil)
 	if err == nil {
 		t.Fatalf("expected error for nil info, got nil")
+	}
+}
+
+func TestInstallUserSpaceApp_Archive(t *testing.T) {
+	tempDataHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", tempDataHome)
+
+	sourceDir := t.TempDir()
+	tarPath := filepath.Join(sourceDir, "portable-tool.tar.gz")
+
+	elfHeader := []byte{0x7f, 0x45, 0x4c, 0x46, 0x02, 0x01, 0x01, 0x00}
+	archiveDir := filepath.Join(sourceDir, "raw")
+	_ = os.MkdirAll(filepath.Join(archiveDir, "bin"), 0755)
+	_ = os.WriteFile(filepath.Join(archiveDir, "bin", "portable-tool"), elfHeader, 0755)
+
+	cmd := exec.Command("tar", "-czf", tarPath, "-C", archiveDir, ".")
+	if err := cmd.Run(); err != nil {
+		t.Skip("tar command not available for test archive creation")
+	}
+
+	info := &detector.FileInfo{
+		Path:          tarPath,
+		FileName:      "portable-tool.tar.gz",
+		AppName:       "Portable Tool",
+		Type:          detector.TypeArchive,
+		IsExecutable:  true,
+		FormattedSize: "1 KB",
+	}
+
+	result, err := InstallUserSpaceApp(info, nil)
+	if err != nil {
+		t.Fatalf("unexpected error installing archive: %v", err)
+	}
+
+	if result.AppName != "Portable Tool" {
+		t.Errorf("expected AppName 'Portable Tool', got %q", result.AppName)
+	}
+
+	if _, err := os.Stat(result.InstallPath); err != nil {
+		t.Errorf("expected installed binary at %q, err: %v", result.InstallPath, err)
+	}
+
+	if _, err := os.Stat(result.DesktopPath); err != nil {
+		t.Errorf("expected desktop entry at %q, err: %v", result.DesktopPath, err)
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"pkgbox/internal/desktop"
 	"pkgbox/internal/detector"
 	"pkgbox/internal/extractor/appimage"
+	"pkgbox/internal/extractor/archive"
 )
 
 type ProgressCallback func(stage string, fraction float64)
@@ -70,40 +71,58 @@ func InstallUserSpaceApp(info *detector.FileInfo, progress ProgressCallback) (*I
 		return nil, fmt.Errorf("failed to create install directory: %w", err)
 	}
 
-	destBinary := filepath.Join(appDir, filepath.Base(info.Path))
-
-	if progress != nil {
-		progress("Copying application binary...", 0.5)
-	}
-
-	if err := copyExecutableFile(info.Path, destBinary); err != nil {
-		return nil, fmt.Errorf("failed to copy executable: %w", err)
-	}
-
-	if progress != nil {
-		progress("Registering desktop launcher...", 0.8)
-	}
-
+	var destBinary string
 	appName := info.AppName
 	comment := fmt.Sprintf("Installed via PkgBox (%s)", info.Type)
 	var categories []string
 	var iconPath string
 
-	if info.Type == detector.TypeAppImage {
-		if meta, err := appimage.ExtractAppImageMetadata(destBinary, appID); err == nil && meta != nil {
-			if meta.Name != "" {
-				appName = meta.Name
-			}
-			if meta.Comment != "" {
-				comment = meta.Comment
-			}
-			if len(meta.Categories) > 0 {
-				categories = meta.Categories
-			}
-			if meta.IconPath != "" {
-				iconPath = meta.IconPath
+	if info.Type == detector.TypeArchive {
+		if progress != nil {
+			progress("Extracting application archive...", 0.4)
+		}
+		if err := archive.ExtractArchive(info.Path, appDir); err != nil {
+			return nil, fmt.Errorf("failed extracting archive: %w", err)
+		}
+
+		if progress != nil {
+			progress("Locating executable...", 0.7)
+		}
+		foundBinary, err := archive.FindPrimaryExecutable(appDir, appID)
+		if err != nil {
+			return nil, fmt.Errorf("archive installation failed: %w", err)
+		}
+		destBinary = foundBinary
+		iconPath = archive.FindArchiveIcon(appDir, appID)
+	} else {
+		destBinary = filepath.Join(appDir, filepath.Base(info.Path))
+		if progress != nil {
+			progress("Copying application binary...", 0.5)
+		}
+		if err := copyExecutableFile(info.Path, destBinary); err != nil {
+			return nil, fmt.Errorf("failed to copy executable: %w", err)
+		}
+
+		if info.Type == detector.TypeAppImage {
+			if meta, err := appimage.ExtractAppImageMetadata(destBinary, appID); err == nil && meta != nil {
+				if meta.Name != "" {
+					appName = meta.Name
+				}
+				if meta.Comment != "" {
+					comment = meta.Comment
+				}
+				if len(meta.Categories) > 0 {
+					categories = meta.Categories
+				}
+				if meta.IconPath != "" {
+					iconPath = meta.IconPath
+				}
 			}
 		}
+	}
+
+	if progress != nil {
+		progress("Registering desktop launcher...", 0.8)
 	}
 
 	cfg := desktop.EntryConfig{
